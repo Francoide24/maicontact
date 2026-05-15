@@ -1,0 +1,35 @@
+# Cloudflare Workers configuration for MaiContact
+
+name = "maicontact"
+main = "dist/index.js"
+compatibility_date = "2024-01-01"
+
+[site]
+bucket = "dist"
+
+[vars]
+APP_ENV = "production"
+
+# Variables de entorno que necesitas configurar en Cloudflare Dashboard
+# VITE_SUPABASE_URL = "tu_supabase_url"
+# VITE_SUPABASE_ANON_KEY = "tu_supabase_anon_key"
+# VITE_WHATSAPP_TOKEN = "tu_whatsapp_token"
+# VITE_WHATSAPP_PHONE_ID = "tu_phone_id"
+# VITE_WHATSAPP_BUSINESS_ID = "tu_business_id"
+# VITE_WHATSAPP_WEBHOOK_VERIFY_TOKEN = "tu_webhook_verify_token"
+# VITE_N8N_WEBHOOK_URL = "tu_n8n_webhook_url"
+# VITE_N8N_API_KEY = "tu_n8n_api_key"
+# VITE_AI_API_KEY = "tu_ai_api_key"
+
+# Build configuration
+[build]
+command = "npm run build"
+
+# Para rutas API (webhooks de WhatsApp)
+[[routes]]
+pattern = "api/*"
+zone_name = "tu-dominio.com"
+
+[[routes]]
+pattern = "/*"
+zone_name = "tu-dominio.com"
