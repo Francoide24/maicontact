@@ -4,7 +4,7 @@
  * TODO: limpiar junto con src/presentation/components/workspace/ en próxima iteración.
  */
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../../infrastructure/api/supabase';
+import { getSupabaseClient } from '../../infrastructure/api/supabase';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
@@ -35,12 +35,12 @@ export const useApp = (): LegacyAppContextType => {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [conversations, setConversations]                 = useState<AnyRecord[]>([]);
-  const [areas]                                           = useState<AnyRecord[]>([]);
-  const [tags]                                            = useState<AnyRecord[]>([]);
-  const [selectedConversationId, setSelectedId]          = useState<string | null>(null);
-  const [loading, setLoading]                             = useState(false);
-  const [error]                                           = useState<string | null>(null);
+  const [conversations, setConversations] = useState<AnyRecord[]>([]);
+  const [areas] = useState<AnyRecord[]>([]);
+  const [tags] = useState<AnyRecord[]>([]);
+  const [selectedConversationId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error] = useState<string | null>(null);
 
   const selectedConversation = conversations.find(
     (c) => c['id'] === selectedConversationId
@@ -54,11 +54,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshConversations = async () => {
     setLoading(true);
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        setConversations([]);
+        return;
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase as any).from('conversations').select('*');
       setConversations(data ?? []);
     } catch {
-      // ignore
+      setConversations([]);
     } finally {
       setLoading(false);
     }
