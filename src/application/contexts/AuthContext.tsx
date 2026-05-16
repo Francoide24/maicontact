@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { config } from '../../infrastructure/config/environment';
-import { supabase } from '../../infrastructure/api/supabase';
+import { getSupabaseClient, isSupabaseConfigured } from '../../infrastructure/api/supabase';
 import { getPermissionsForRole, type Permission } from '../services/rbac';
 
 export interface AuthUser {
@@ -31,12 +30,11 @@ export const useAuth = (): AuthContextType => {
   return ctx;
 };
 
-const isSupabaseConfigured = (): boolean =>
-  Boolean(config.supabase.url && config.supabase.anonKey);
-
 async function fetchUserProfile(userId: string): Promise<AuthUser | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
     .from('users')
     .select('id, name, email, role, is_active')
     .eq('id', userId)
@@ -51,19 +49,22 @@ async function fetchUserProfile(userId: string): Promise<AuthUser | null> {
     email: data.email,
     role,
     permissions: getPermissionsForRole(role),
-    isActive: data.is_active,
+    isActive: Boolean(data.is_active),
   };
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [configError]                  = useState(!isSupabaseConfigured());
+  const [loading, setLoading] = useState(true);
+  const [configError, setConfigError] = useState(!isSupabaseConfigured);
   const [profileMissing, setProfileMissing] = useState(false);
-  const [authError, setAuthError]     = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
+    const supabase = getSupabaseClient();
+
+    if (!supabase) {
+      setConfigError(true);
       setLoading(false);
       return;
     }
@@ -85,10 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (cancelled) return;
 
         if (!profile) {
+          setCurrentUser(null);
           setProfileMissing(true);
         } else if (!profile.isActive) {
+          setCurrentUser(null);
           setAuthError('Tu cuenta está desactivada. Contacta al administrador.');
         } else {
+          setProfileMissing(false);
+          setAuthError(null);
           setCurrentUser(profile);
         }
       } catch (err) {
@@ -104,28 +109,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
+
       if (!session) {
         setCurrentUser(null);
         setProfileMissing(false);
         setAuthError(null);
         return;
       }
-      fetchUserProfile(session.user.id).then((profile) => {
-        if (cancelled) return;
-        if (!profile) {
-          setCurrentUser(null);
-          setProfileMissing(true);
-        } else if (!profile.isActive) {
-          setCurrentUser(null);
-          setAuthError('Tu cuenta está desactivada.');
-        } else {
-          setProfileMissing(false);
-          setAuthError(null);
-          setCurrentUser(profile);
-        }
-      }).catch((err) => {
-        if (!cancelled) setAuthError(err instanceof Error ? err.message : 'Error al cargar perfil');
-      });
+
+      fetchUserProfile(session.user.id)
+        .then((profile) => {
+          if (cancelled) return;
+          if (!profile) {
+            setCurrentUser(null);
+            setProfileMissing(true);
+          } else if (!profile.isActive) {
+            setCurrentUser(null);
+            setAuthError('Tu cuenta está desactivada.');
+          } else {
+            setProfileMissing(false);
+            setAuthError(null);
+            setCurrentUser(profile);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) setAuthError(err instanceof Error ? err.message : 'Error al cargar perfil');
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
     });
 
     return () => {
@@ -135,15 +147,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
-    if (!isSupabaseConfigured()) throw new Error('Supabase no está configurado');
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      setConfigError(true);
+      throw new Error('Supabase no está configurado');
+    }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
-    // onAuthStateChange will fire and set currentUser
   };
 
   const logout = async (): Promise<void> => {
-    if (isSupabaseConfigured()) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       await supabase.auth.signOut().catch(() => { /* ignore */ });
     }
     setCurrentUser(null);
