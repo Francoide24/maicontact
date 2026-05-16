@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useStore } from '../state/store';
 import { useAuth } from '../application/contexts/AuthContext';
+import { useDbActions } from './DataLoader';
 import { can } from '../application/services/rbac';
 import { Modal } from './Modal';
 
 export const Topbar: React.FC = () => {
   const { state, dispatch } = useStore();
   const { currentUser, logout } = useAuth();
+  const db = useDbActions();
 
   const [showNewFunnelModal, setShowNewFunnelModal]   = useState(false);
   const [showNewStageModal, setShowNewStageModal]     = useState(false);
@@ -21,7 +23,7 @@ export const Topbar: React.FC = () => {
   const handleCreateFunnel = () => {
     const name = newFunnelName.trim();
     if (!name) return;
-    dispatch({ type: 'CREATE_FUNNEL', name });
+    db.createFunnel(name);
     setNewFunnelName('');
     setShowNewFunnelModal(false);
   };
@@ -29,7 +31,7 @@ export const Topbar: React.FC = () => {
   const handleCreateStage = () => {
     const name = newStageName.trim();
     if (!name || !state.activeFunnelId) return;
-    dispatch({ type: 'CREATE_STAGE', funnelId: state.activeFunnelId, name });
+    db.createStage(state.activeFunnelId, name);
     setNewStageName('');
     setShowNewStageModal(false);
   };

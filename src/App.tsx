@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './application/contexts/AuthContext';
 import { ProtectedRoute } from './presentation/components/auth/ProtectedRoute';
 import { StoreProvider, useStore } from './state/store';
+import { DataLoader } from './components/DataLoader';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { FunnelBoard } from './components/FunnelBoard';
@@ -22,6 +23,22 @@ function AppShell() {
   }, [sidebarCollapsed]);
 
   const renderView = () => {
+    if (state.dbLoading) {
+      return (
+        <div className="stub-view" style={{ flexDirection: 'column', gap: 12 }}>
+          <span style={{ fontSize: 24 }}>⟳</span>
+          <span style={{ fontSize: 14 }}>Cargando datos…</span>
+        </div>
+      );
+    }
+    if (state.dbError) {
+      return (
+        <div className="stub-view" style={{ flexDirection: 'column', gap: 8 }}>
+          <span style={{ color: 'var(--color-danger)' }}>Error al cargar</span>
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{state.dbError}</span>
+        </div>
+      );
+    }
     switch (state.activeView) {
       case 'funnel':    return <FunnelBoard />;
       case 'chat':      return <ChatLayout />;
@@ -48,7 +65,9 @@ export function App() {
     <AuthProvider>
       <ProtectedRoute>
         <StoreProvider>
-          <AppShell />
+          <DataLoader>
+            <AppShell />
+          </DataLoader>
         </StoreProvider>
       </ProtectedRoute>
     </AuthProvider>

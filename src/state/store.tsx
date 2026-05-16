@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { MockDataState, Message, AppUser, Campaign, Pool } from '../data/mockData';
 import { loadState, saveState } from '../services/persistence';
 import { moveConversationToStage } from '../services/stageRouting';
+import type { OrgData } from '../infrastructure/api/db';
 
 export type ActiveView = 'funnel' | 'chat' | 'channels' | 'team' | 'campaigns' | 'templates' | 'settings';
 
@@ -9,25 +10,34 @@ export interface AppState extends MockDataState {
   activeFunnelId: string | null;
   activeView: ActiveView;
   selectedConversationId: string | null;
+  dbLoading: boolean;
+  dbError: string | null;
 }
 
 type Action =
+  // ── DB lifecycle ──────────────────────────────────────────────────────────
+  | { type: 'DB_LOADING' }
+  | { type: 'DB_ERROR'; message: string }
+  | { type: 'HYDRATE'; data: OrgData }
+  | { type: 'LOAD_MESSAGES_SUCCESS'; conversationId: string; messages: Message[] }
+  // ── UI ────────────────────────────────────────────────────────────────────
   | { type: 'SET_ACTIVE_VIEW'; view: ActiveView }
   | { type: 'SET_ACTIVE_FUNNEL'; funnelId: string }
   | { type: 'SELECT_CONVERSATION'; conversationId: string | null }
+  // ── Domain mutations ──────────────────────────────────────────────────────
   | { type: 'MOVE_CONVERSATION'; conversationId: string; targetStageId: string; actorId: string }
   | { type: 'SEND_MESSAGE'; conversationId: string; text: string; isInternal: boolean }
-  | { type: 'CREATE_FUNNEL'; name: string }
-  | { type: 'CREATE_STAGE'; funnelId: string; name: string }
+  | { type: 'CREATE_FUNNEL'; name: string; dbId?: string }
+  | { type: 'CREATE_STAGE'; funnelId: string; name: string; dbId?: string }
   // Team / Users
-  | { type: 'CREATE_USER'; user: Omit<AppUser, 'id'> }
+  | { type: 'CREATE_USER'; user: Omit<AppUser, 'id'>; dbId?: string }
   | { type: 'UPDATE_USER'; userId: string; changes: Partial<AppUser> }
   | { type: 'TOGGLE_USER_STATUS'; userId: string }
   // Campaigns
-  | { type: 'CREATE_CAMPAIGN'; campaign: Omit<Campaign, 'id'> }
+  | { type: 'CREATE_CAMPAIGN'; campaign: Omit<Campaign, 'id'>; dbId?: string }
   | { type: 'UPDATE_CAMPAIGN'; campaignId: string; changes: Partial<Campaign> }
   // Pools
-  | { type: 'CREATE_POOL'; pool: Omit<Pool, 'id'> }
+  | { type: 'CREATE_POOL'; pool: Omit<Pool, 'id'>; dbId?: string }
   | { type: 'UPDATE_POOL'; poolId: string; changes: Partial<Pool> }
   | { type: 'ADD_USER_TO_POOL'; poolId: string; userId: string }
   | { type: 'REMOVE_USER_FROM_POOL'; poolId: string; userId: string };
@@ -38,6 +48,33 @@ function newId(prefix: string): string {
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
+
+    case 'DB_LOADING':
+      return { ...state, dbLoading: true, dbError: null };
+
+    case 'DB_ERROR':
+      return { ...state, dbLoading: false, dbError: action.message };
+
+    case 'HYDRATE': {
+      const firstFunnelId = Object.keys(action.data.funnels)[0] ?? null;
+      return {
+        ...state,
+        ...action.data,
+        dbLoading: false,
+        dbError: null,
+        // Preserve active funnel if it still exists, else pick first
+        activeFunnelId: (state.activeFunnelId && action.data.funnels[state.activeFunnelId])
+          ? state.activeFunnelId
+          : firstFunnelId,
+      };
+    }
+
+    case 'LOAD_MESSAGES_SUCCESS':
+      return {
+        ...state,
+        messages: { ...state.messages, [action.conversationId]: action.messages },
+      };
+
     case 'SET_ACTIVE_VIEW':
       return { ...state, activeView: action.view };
 
@@ -74,7 +111,7 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'CREATE_FUNNEL': {
-      const id = newId('f');
+      const id = action.dbId ?? newId('f');
       return {
         ...state,
         funnels: { ...state.funnels, [id]: { id, name: action.name, stageIds: [] } },
@@ -83,7 +120,7 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'CREATE_STAGE': {
-      const id = newId('s');
+      const id = action.dbId ?? newId('s');
       const funnel = state.funnels[action.funnelId];
       if (!funnel) return state;
       const stage = {
@@ -100,7 +137,7 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'CREATE_USER': {
-      const id = newId('u');
+      const id = action.dbId ?? newId('u');
       const user: AppUser = { id, ...action.user };
       return { ...state, users: { ...state.users, [id]: user } };
     }
@@ -118,7 +155,7 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'CREATE_CAMPAIGN': {
-      const id = newId('c');
+      const id = action.dbId ?? newId('c');
       const campaign: Campaign = { id, ...action.campaign };
       return { ...state, campaigns: { ...state.campaigns, [id]: campaign } };
     }
@@ -130,7 +167,7 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'CREATE_POOL': {
-      const id = newId('pool');
+      const id = action.dbId ?? newId('pool');
       const pool: Pool = { id, ...action.pool };
       return { ...state, pools: { ...state.pools, [id]: pool } };
     }
@@ -189,7 +226,14 @@ function extractDomainState(appState: AppState): MockDataState {
 function buildInitialState(): AppState {
   const persisted = loadState();
   const firstFunnelId = Object.keys(persisted.funnels)[0] ?? null;
-  return { ...persisted, activeFunnelId: firstFunnelId, activeView: 'funnel', selectedConversationId: null };
+  return {
+    ...persisted,
+    activeFunnelId: firstFunnelId,
+    activeView: 'funnel',
+    selectedConversationId: null,
+    dbLoading: true,   // true until HYDRATE or DB_ERROR
+    dbError: null,
+  };
 }
 
 interface StoreContextType {

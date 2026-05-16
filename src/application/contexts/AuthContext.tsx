@@ -6,6 +6,7 @@ type UserRole = 'admin' | 'supervisor' | 'agent';
 
 type UserProfileRow = {
   id: string;
+  organization_id: string;
   name: string;
   email: string;
   role: UserRole;
@@ -14,6 +15,7 @@ type UserProfileRow = {
 
 export interface AuthUser {
   id: string;
+  organizationId: string;
   name: string;
   email: string;
   role: UserRole;
@@ -46,7 +48,7 @@ async function fetchUserProfile(userId: string): Promise<AuthUser | null> {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, email, role, is_active')
+    .select('id, organization_id, name, email, role, is_active')
     .eq('id', userId)
     .maybeSingle();
 
@@ -57,6 +59,7 @@ async function fetchUserProfile(userId: string): Promise<AuthUser | null> {
 
   return {
     id: row.id,
+    organizationId: row.organization_id,
     name: row.name,
     email: row.email,
     role,
