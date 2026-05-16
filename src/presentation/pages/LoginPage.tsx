@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../application/contexts/AuthContext';
 
 export const LoginPage: React.FC = () => {
-  const { signIn } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -12,76 +12,71 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
-      await signIn(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión');
+      await login(email.trim(), password);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="shell" style={{ justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-      <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '2rem' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <p className="eyebrow">MAIHUE - PLATAFORMA OPERACIONAL</p>
-          <h1>Iniciar Sesión</h1>
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="login-logo">M</div>
+          <h1 className="login-title">MaiContact</h1>
+          <p className="login-subtitle">Plataforma operacional Maihue</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="field-stack">
-            <label htmlFor="email">Email</label>
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
+          <div className="login-field">
+            <label htmlFor="email" className="login-label">Correo electrónico</label>
             <input
-              type="email"
               id="email"
+              type="email"
+              className="login-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
+              placeholder="correo@maihue.cl"
               required
               disabled={loading}
-              style={{ padding: '0.75rem' }}
+              autoComplete="email"
+              autoFocus
             />
           </div>
 
-          <div className="field-stack">
-            <label htmlFor="password">Contraseña</label>
+          <div className="login-field">
+            <label htmlFor="password" className="login-label">Contraseña</label>
             <input
-              type="password"
               id="password"
+              type="password"
+              className="login-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
               disabled={loading}
-              style={{ padding: '0.75rem' }}
+              autoComplete="current-password"
             />
           </div>
 
-          {error && (
-            <div style={{ color: 'red', fontSize: '0.875rem' }}>
-              {error}
-            </div>
-          )}
+          {error && <p className="login-error" role="alert">{error}</p>}
 
-          <button
-            type="submit"
-            className="primary"
-            disabled={loading}
-            style={{ padding: '0.75rem', marginTop: '1rem' }}
-          >
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+          <button type="submit" className="login-submit" disabled={loading}>
+            {loading ? 'Ingresando…' : 'Ingresar'}
           </button>
         </form>
 
-        <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem', color: '#666' }}>
-          <p>Usuarios de demostración:</p>
-          <p>admin@maihue.cl (Admin)</p>
-          <p>supervisor@maihue.cl (Supervisor)</p>
-          <p>agente@maihue.cl (Agente)</p>
+        {/* ⚠️  Solo para demo/MVP — remover en producción */}
+        <div className="login-demo-hint">
+          <span className="login-demo-label">Demo</span>
+          <code>prueba1@maihue.cl</code>
+          <span>/</span>
+          <code>prueba1</code>
         </div>
       </div>
-    </main>
+    </div>
   );
 };
