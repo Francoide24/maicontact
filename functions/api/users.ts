@@ -54,12 +54,12 @@ async function verifyCallerIsAdmin(
   if (!res.ok) return null;
   const authUser = await res.json() as { id: string };
 
-  // Check role in public.users using service_role (bypasses RLS)
+  // Check role in public.users — use the user's own JWT so RLS resuelve auth.uid()
   const dbRes = await fetch(
     `${supabaseUrl}/rest/v1/users?id=eq.${authUser.id}&select=id,organization_id,role,is_active`,
     {
       headers: {
-        Authorization: `Bearer ${anonKey}`,
+        Authorization: `Bearer ${token}`,
         apikey: anonKey,
         'Content-Type': 'application/json',
       },
