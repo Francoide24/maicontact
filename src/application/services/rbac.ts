@@ -42,3 +42,12 @@ export function canAll(user: WithPermissions | null | undefined, permissions: Pe
   if (!user) return false;
   return permissions.every((p) => user.permissions.includes(p));
 }
+
+export function getPermissionsForRole(role: 'admin' | 'supervisor' | 'agent'): Permission[] {
+  if (role === 'admin') return ALL_PERMISSIONS;
+  if (role === 'supervisor') return PERMISSIONS.filter((p) =>
+    !['roles.manage', 'permissions.manage', 'channels.manage', 'settings.manage'].includes(p)
+  );
+  // agent
+  return ['conversations.read.assigned', 'conversations.close', 'campaigns.read', 'pools.read', 'funnels.read'];
+}
