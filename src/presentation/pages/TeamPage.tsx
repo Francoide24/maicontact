@@ -70,6 +70,22 @@ export const TeamPage: React.FC = () => {
         </div>
       </div>
 
+      {canManage && (
+        <div className="info-banner">
+          <strong>Provisioning de usuarios:</strong> Los cambios aquí son locales (estado demo).
+          Para crear usuarios reales en producción, créalos en Supabase Auth e inserta la fila en{' '}
+          <code>public.users</code>. La creación desde esta UI requiere un Worker/Edge Function seguro.{' '}
+          <a
+            href="https://supabase.com/dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="banner-link"
+          >
+            Ir a Supabase →
+          </a>
+        </div>
+      )}
+
       <div className="team-table-wrapper">
         <table className="team-table">
           <thead>

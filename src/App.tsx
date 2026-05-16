@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './application/contexts/AuthContext';
 import { ProtectedRoute } from './presentation/components/auth/ProtectedRoute';
 import { StoreProvider, useStore } from './state/store';
@@ -9,8 +9,17 @@ import { ChatLayout } from './components/ChatLayout';
 import { TeamPage } from './presentation/pages/TeamPage';
 import { CampaignsPage } from './presentation/pages/CampaignsPage';
 
+const COLLAPSE_KEY = 'maicontact_sidebar_collapsed';
+
 function AppShell() {
   const { state } = useStore();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(COLLAPSE_KEY) === 'true'; } catch { return false; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(COLLAPSE_KEY, String(sidebarCollapsed)); } catch { /* ignore */ }
+  }, [sidebarCollapsed]);
 
   const renderView = () => {
     switch (state.activeView) {
@@ -18,17 +27,17 @@ function AppShell() {
       case 'chat':      return <ChatLayout />;
       case 'team':      return <TeamPage />;
       case 'campaigns': return <CampaignsPage />;
-      case 'channels':  return <div className="stub-view">Canales</div>;
-      case 'templates': return <div className="stub-view">Plantillas Meta</div>;
-      case 'settings':  return <div className="stub-view">Configuración</div>;
+      case 'channels':  return <div className="stub-view">Canales — próximamente</div>;
+      case 'templates': return <div className="stub-view">Plantillas Meta — próximamente</div>;
+      case 'settings':  return <div className="stub-view">Configuración — próximamente</div>;
       default:          return null;
     }
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ' sidebar-expanded'}`}>
       <Topbar />
-      <Sidebar />
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((c) => !c)} />
       <main className="app-main">{renderView()}</main>
     </div>
   );

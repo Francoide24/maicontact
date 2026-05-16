@@ -4,18 +4,45 @@ Plataforma operacional omnicanal tipo Vambe para Maihue. CRM con embudos Kanban,
 
 ## Estado
 
-✅ **MVP funcional** — Demo auth, RBAC, Kanban board, Team, Campañas, Pools.
+✅ **MVP funcional** — Supabase Auth, RBAC, Kanban board, Team, Campañas, Pools.
 
-> ⚠️  **Seguridad**: La autenticación actual es solo para demostración/MVP. En producción debe reemplazarse por Cloudflare Access, JWT firmado + Workers, Supabase Auth real u otro proveedor de identidad. Las credenciales demo en `src/infrastructure/auth/demoAuth.ts` deben eliminarse antes de producción.
+> ⚠️  **Seguridad**: `AuthContext` usa Supabase Auth real. Si faltan las variables de entorno se muestra una pantalla de configuración en lugar de pantalla blanca. Los usuarios deben crearse manualmente (ver sección Provisioning). No hay `service_role key` en el frontend.
 
-## Credenciales demo
+## Provisioning de usuarios
 
-| Email | Password | Rol |
-|-------|----------|-----|
-| prueba1@maihue.cl | prueba1 | Admin (todos los permisos) |
-| franco@maihue.cl  | franco123 | Admin |
-| carla@maihue.cl   | carla123  | Agente |
-| paula@maihue.cl   | paula123  | Agente |
+### Flujo actual (MVP)
+
+Los usuarios se crean en dos pasos manuales:
+
+1. **Supabase Auth** → Dashboard → Authentication → Users → "Invite user" o "Add user".
+2. **public.users** → insertar fila con `id = auth.users.id`:
+
+```sql
+INSERT INTO public.users (id, organization_id, name, email, role, is_active)
+VALUES (
+  '<uuid del usuario en auth.users>',
+  '<uuid de la organización>',
+  'Nombre Apellido',
+  'correo@maihue.cl',
+  'agent',   -- admin | supervisor | agent
+  true
+);
+```
+
+El admin inicial es `prueba1@maihue.cl` (creado manualmente en Supabase Auth + public.users).
+
+### ⚠️ Qué NO hacer
+
+- **No usar `service_role key` en el frontend** — expone acceso total a la base de datos.
+- No implementar `supabase.auth.admin.createUser()` en código cliente.
+
+### Flujo futuro (producción)
+
+La creación de usuarios desde la UI de Equipo debe implementarse vía:
+- **Cloudflare Worker** o **Pages Function** con `service_role key` en variable de entorno del Worker (nunca expuesta al cliente).
+- O **Supabase Edge Function** que recibe el email y crea el usuario en Auth + inserta en `public.users`.
+
+El botón "+ Nuevo usuario" en TeamPage actualmente opera sobre el estado local (mock). Cuando el backend esté listo, `dispatch({ type: 'CREATE_USER' })` debe reemplazarse por una llamada al Worker/Edge Function.
 
 ## Arquitectura
 

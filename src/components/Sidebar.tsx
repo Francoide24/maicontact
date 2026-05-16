@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useStore, type ActiveView } from '../state/store';
 import { useAuth } from '../application/contexts/AuthContext';
 import { can } from '../application/services/rbac';
@@ -11,28 +11,23 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { view: 'funnel',    icon: '⬡',  label: 'Embudos',       permission: 'funnels.read' },
+  { view: 'funnel',    icon: '⬡',  label: 'Embudos',         permission: 'funnels.read' },
   { view: 'chat',      icon: '💬',  label: 'Chat' },
-  { view: 'channels',  icon: '📡',  label: 'Canales',       permission: 'channels.manage' },
-  { view: 'team',      icon: '👥',  label: 'Equipo',        permission: 'users.read' },
-  { view: 'campaigns', icon: '📣',  label: 'Campañas',      permission: 'campaigns.read' },
+  { view: 'channels',  icon: '📡',  label: 'Canales',         permission: 'channels.manage' },
+  { view: 'team',      icon: '👥',  label: 'Equipo',          permission: 'users.read' },
+  { view: 'campaigns', icon: '📣',  label: 'Campañas',        permission: 'campaigns.read' },
   { view: 'templates', icon: '📋',  label: 'Plantillas Meta', permission: 'templates.manage' },
-  { view: 'settings',  icon: '⚙️', label: 'Configuración', permission: 'settings.manage' },
+  { view: 'settings',  icon: '⚙️', label: 'Configuración',   permission: 'settings.manage' },
 ];
 
-const COLLAPSE_KEY = 'maicontact_sidebar_collapsed';
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const { state, dispatch } = useStore();
   const { currentUser, logout } = useAuth();
-
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(COLLAPSE_KEY) === 'true'; } catch { return false; }
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem(COLLAPSE_KEY, String(collapsed)); } catch { /* ignore */ }
-  }, [collapsed]);
 
   const initials = (currentUser?.name ?? 'U')
     .split(' ')
@@ -49,7 +44,7 @@ export const Sidebar: React.FC = () => {
     <aside className={`app-sidebar${collapsed ? ' collapsed' : ' expanded'}`}>
       <button
         className="sidebar-toggle"
-        onClick={() => setCollapsed((c) => !c)}
+        onClick={onToggle}
         title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
         aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
       >
@@ -62,7 +57,6 @@ export const Sidebar: React.FC = () => {
             key={view}
             className={`sidebar-nav-btn${state.activeView === view ? ' active' : ''}`}
             onClick={() => dispatch({ type: 'SET_ACTIVE_VIEW', view })}
-            title={collapsed ? label : undefined}
           >
             <span className="sidebar-icon" aria-hidden="true">{icon}</span>
             {!collapsed && <span className="sidebar-label">{label}</span>}
@@ -74,7 +68,7 @@ export const Sidebar: React.FC = () => {
       <div className="sidebar-bottom">
         <button
           className="sidebar-avatar-btn"
-          title={currentUser?.name ?? 'Usuario'}
+          title={collapsed ? (currentUser?.name ?? 'Cerrar sesión') : 'Cerrar sesión'}
           onClick={logout}
         >
           <span className="sidebar-avatar">{initials}</span>
