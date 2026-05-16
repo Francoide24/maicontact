@@ -1,0 +1,176 @@
+.funnel-board {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  overflow-x: auto;
+  height: 100%;
+  align-items: flex-start;
+}
+
+.funnel-board::-webkit-scrollbar {
+  height: 6px;
+}
+
+.funnel-board::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+.funnel-board::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.funnel-column {
+  flex-shrink: 0;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  max-height: 100%;
+}
+
+.funnel-column.drag-over {
+  border-color: var(--color-accent);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.funnel-column-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.funnel-column-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.funnel-column-name {
+  font-weight: 600;
+  font-size: 13px;
+  flex: 1;
+}
+
+.funnel-column-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.funnel-column-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 80px;
+}
+
+.funnel-column-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.funnel-column-body::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+/* Ticket Card */
+.ticket-card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  cursor: grab;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.ticket-card:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+}
+
+.ticket-card:active {
+  cursor: grabbing;
+}
+
+.ticket-card.dragging {
+  opacity: 0.5;
+}
+
+.ticket-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.ticket-card-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.ticket-card-channel {
+  font-size: 15px;
+}
+
+.ticket-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.priority-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.priority-alta { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.priority-media { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.priority-baja { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+
+.ticket-card-assignee {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* New stage button */
+.funnel-new-stage-btn {
+  flex-shrink: 0;
+  width: 280px;
+  height: 60px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  align-self: flex-start;
+}
+
+.funnel-new-stage-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
