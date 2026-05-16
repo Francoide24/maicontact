@@ -2,11 +2,21 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabaseClient, isSupabaseConfigured } from '../../infrastructure/api/supabase';
 import { getPermissionsForRole, type Permission } from '../services/rbac';
 
+type UserRole = 'admin' | 'supervisor' | 'agent';
+
+type UserProfileRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+};
+
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'supervisor' | 'agent';
+  role: UserRole;
   permissions: Permission[];
   isActive: boolean;
 }
@@ -38,18 +48,20 @@ async function fetchUserProfile(userId: string): Promise<AuthUser | null> {
     .from('users')
     .select('id, name, email, role, is_active')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) return null;
 
-  const role = data.role as 'admin' | 'supervisor' | 'agent';
+  const row = data as UserProfileRow;
+  const role = row.role;
+
   return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
+    id: row.id,
+    name: row.name,
+    email: row.email,
     role,
     permissions: getPermissionsForRole(role),
-    isActive: Boolean(data.is_active),
+    isActive: Boolean(row.is_active),
   };
 }
 
