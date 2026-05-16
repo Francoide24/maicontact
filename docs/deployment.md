@@ -1,182 +1,160 @@
-# Guía de Despliegue - MaiContact
+# Guía de despliegue — MaiContact
 
-## Prerequisitos
+## Resumen del stack
 
-1. **Supabase**: Base de datos y autenticación
-2. **n8n**: Automatización de workflows
-3. **Cloudflare**: Hosting y CDN
-4. **Meta Business**: WhatsApp Cloud API
+| Capa | Servicio |
+|---|---|
+| Frontend | Cloudflare Pages (build estático) |
+| Auth + DB | Supabase |
+| Mensajería | WhatsApp Cloud API (Meta) → n8n → Supabase |
+| Backend (futuro) | Cloudflare Workers (Pages Functions) |
 
-## 1. Configuración de Supabase
+---
 
-### Crear proyecto Supabase
-```bash
-# 1. Crear cuenta en supabase.com
-# 2. Crear nuevo proyecto
-# 3. Ejecutar el SQL del modelo de datos
+## Paso 1 — Supabase: crear proyecto y ejecutar schema
+
+### 1.1 Crear proyecto en Supabase
+
+1. Ir a [supabase.com](https://supabase.com) → New project
+2. Anota la **Project URL** y la **anon key** (Settings → API)
+
+### 1.2 Ejecutar el schema
+
+En Supabase Dashboard → **SQL Editor → New query**, ejecutar en este orden:
+
+```
+docs/schema.sql   ← tablas, índices, triggers
+docs/rls.sql      ← Row Level Security y políticas
 ```
 
-### SQL a ejecutar en Supabase
+### 1.3 Crear el usuario admin en Supabase Auth
+
+1. Dashboard → **Authentication → Users → Add user**
+2. Email: `prueba1@maihue.cl`, contraseña segura
+3. Copiar el **UUID** que aparece en la columna UID
+
+### 1.4 Ejecutar el seed
+
+Abrir `docs/seed.sql`, reemplazar `<UUID-DEL-ADMIN-EN-AUTH>` con el UUID real y ejecutar en SQL Editor.
+
+### 1.5 Verificar
+
 ```sql
--- Copiar y pegar el contenido de docs/data-model.sql
--- en el SQL Editor de Supabase
+-- Debe devolver 1 fila con role = 'admin'
+SELECT id, name, email, role FROM users;
+
+-- Debe devolver 1 funnel con 5 etapas
+SELECT f.name AS funnel, s.name AS stage, s.position
+FROM funnels f
+JOIN stages s ON s.funnel_id = f.id
+ORDER BY s.position;
 ```
 
-### Configuración RLS (Row Level Security)
+---
+
+## Paso 2 — Cloudflare Pages: configurar variables de entorno
+
+Las variables deben configurarse en Cloudflare Pages (no en Workers) porque el frontend es un sitio estático compilado con Vite. Las variables `VITE_*` se incrustan en el build.
+
+### 2.1 Agregar variables en Cloudflare Pages
+
+1. Ir a [dash.cloudflare.com](https://dash.cloudflare.com)
+2. **Workers & Pages → tu proyecto → Settings → Environment variables**
+3. Agregar para **Production** (y opcionalmente Preview):
+
+| Variable | Valor | Dónde obtenerlo |
+|---|---|---|
+| `VITE_SUPABASE_URL` | `https://xxxx.supabase.co` | Supabase → Settings → API |
+| `VITE_SUPABASE_ANON_KEY` | `eyJhbGci...` | Supabase → Settings → API |
+| `VITE_APP_NAME` | `MaiContact` | Libre |
+| `VITE_APP_ENV` | `production` | Libre |
+
+> ⚠️ **NO agregar** `SUPABASE_SERVICE_ROLE_KEY` como variable `VITE_*` — quedaría expuesta en el bundle del cliente. La service role key solo va en variables de entorno de Workers (lado servidor).
+
+### 2.2 Forzar un nuevo deploy
+
+Después de guardar las variables, Cloudflare Pages necesita un nuevo build para incrustarlas:
+
+- Ir a **Deployments → Retry deployment** en el deploy más reciente
+- O hacer `git push` al branch conectado
+
+### 2.3 Verificar que la app carga
+
+- La pantalla de login debe aparecer (no pantalla blanca ni "configuración incompleta")
+- Ingresar con `prueba1@maihue.cl` y la contraseña que seteaste en Auth
+- Debe cargar la vista de Embudos con los datos del seed
+
+---
+
+## Paso 3 — Habilitar Realtime (opcional para MVP)
+
+Para que múltiples agentes vean cambios en tiempo real sin recargar:
+
+1. Supabase Dashboard → **Database → Replication**
+2. Activar las tablas: `conversations`, `messages`, `audit_logs`
+
+O via SQL:
 ```sql
--- Habilitar RLS en todas las tablas
-ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
--- ... (repetir para todas las tablas)
-
--- Políticas básicas (expandir según necesidades)
-CREATE POLICY "Users can view own organization data" ON organizations
-    FOR ALL USING (id IN (
-        SELECT organization_id FROM users WHERE id = auth.uid()
-    ));
+ALTER PUBLICATION supabase_realtime ADD TABLE conversations;
+ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE audit_logs;
 ```
 
-### Variables de entorno para Supabase
+---
+
+## Paso 4 — n8n + WhatsApp (después de MVP funcional)
+
+> Completar una vez que el paso 2 funcione end-to-end.
+
+### Variables adicionales a agregar en Cloudflare Pages
+
+| Variable | Descripción |
+|---|---|
+| `VITE_N8N_WEBHOOK_URL` | URL base de tu instancia n8n |
+| `VITE_WHATSAPP_PHONE_ID` | Phone Number ID de Meta Business |
+| `VITE_WHATSAPP_BUSINESS_ID` | WhatsApp Business Account ID |
+
+> `VITE_WHATSAPP_TOKEN` (token de acceso) es sensible. Evaluar si manejarlo desde el Worker en lugar del frontend.
+
+### Flujo de mensajes entrantes
+
 ```
-VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
-VITE_SUPABASE_ANON_KEY=tu_anon_key
+WhatsApp Cloud API
+      ↓ webhook POST
+    n8n
+      ↓ HTTP Request node
+  Supabase REST API   ← inserta en contacts + conversations + messages
+      ↓ postgres_changes
+   Frontend (Realtime)  ← aparece en el inbox sin recargar
 ```
 
-## 2. Configuración de n8n
+---
 
-### Instalación
+## Variables de entorno de desarrollo local
+
+Copiar `.env.template` a `.env` y completar:
+
 ```bash
-# Opción 1: Docker
-docker run -it --rm --name n8n -p 5678:5678 n8nio/n8n
-
-# Opción 2: npm
-npm install n8n -g
-n8n start
+cp .env.template .env
 ```
 
-### Webhooks necesarios
-1. **Webhook para mensajes WhatsApp**: `/webhook/whatsapp`
-2. **Webhook para IA**: `/webhook/ai-suggestions`
-3. **Webhook para notificaciones**: `/webhook/notifications`
-
-### Variables de entorno para n8n
-```
-VITE_N8N_WEBHOOK_URL=https://tu-n8n.com/webhook
-VITE_N8N_API_KEY=tu_api_key
+```env
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGci...
+VITE_APP_NAME=MaiContact
+VITE_APP_ENV=development
 ```
 
-## 3. Configuración de WhatsApp Cloud API
+---
 
-### Requisitos Meta Business
-1. Cuenta Meta Business verificada
-2. Aplicación WhatsApp Business
-3. Número de teléfono verificado
+## Checklist de lanzamiento MVP
 
-### Variables de entorno
-```
-VITE_WHATSAPP_TOKEN=tu_access_token
-VITE_WHATSAPP_PHONE_ID=tu_phone_number_id
-VITE_WHATSAPP_BUSINESS_ID=tu_business_account_id
-VITE_WHATSAPP_WEBHOOK_VERIFY_TOKEN=tu_verification_token
-```
-
-### Configurar Webhook en Meta
-```
-URL del webhook: https://tu-dominio.com/api/whatsapp/webhook
-Verify token: tu_verification_token
-Campos suscritos: messages, message_deliveries, message_reads
-```
-
-## 4. Despliegue en Cloudflare
-
-### Instalación Wrangler CLI
-```bash
-npm install -g wrangler
-wrangler login
-```
-
-### Configuración
-1. Editar `wrangler.toml` con tu dominio
-2. Configurar variables de entorno en Cloudflare Dashboard
-
-### Variables de entorno en Cloudflare
-```bash
-# Configurar en Cloudflare Dashboard > Workers > Settings > Environment Variables
-wrangler secret put VITE_SUPABASE_URL
-wrangler secret put VITE_SUPABASE_ANON_KEY
-wrangler secret put VITE_WHATSAPP_TOKEN
-# ... etc
-```
-
-### Despliegue
-```bash
-# Build del proyecto
-npm run build
-
-# Deploy a Cloudflare
-wrangler deploy
-
-# Para Pages (alternativa)
-wrangler pages deploy dist --project-name maicontact
-```
-
-## 5. Configuración de dominios
-
-### DNS en Cloudflare
-```
-Tipo: CNAME
-Nombre: maicontact (o @)
-Destino: maicontact.tu-worker.workers.dev
-Proxy: Habilitado (naranja)
-```
-
-### SSL/TLS
-- Configurar SSL/TLS en modo "Full (strict)"
-- Habilitar "Always Use HTTPS"
-
-## 6. Verificación del despliegue
-
-### Checklist
-- [ ] Aplicación carga correctamente
-- [ ] Login funciona con Supabase
-- [ ] Base de datos conectada
-- [ ] Webhook WhatsApp responde
-- [ ] n8n recibe notificaciones
-- [ ] SSL configurado correctamente
-
-### URLs importantes
-- Aplicación: `https://tu-dominio.com`
-- Webhook WhatsApp: `https://tu-dominio.com/api/whatsapp/webhook`
-- Health check: `https://tu-dominio.com/api/health`
-
-## 7. Monitoreo
-
-### Logs de Cloudflare
-- Workers Analytics para métricas
-- Real-time Logs para debugging
-
-### Supabase Analytics
-- Monitor de queries lentas
-- Auth metrics
-- API usage
-
-## 8. Usuarios de prueba
-
-Crear usuarios iniciales en Supabase:
-```sql
--- Insertar organización
-INSERT INTO organizations (name) VALUES ('Maihue Demo');
-
--- Insertar usuarios de prueba
-INSERT INTO users (organization_id, name, email, role) VALUES 
-(org_id, 'Admin Maihue', 'admin@maihue.cl', 'admin'),
-(org_id, 'Supervisor Comercial', 'supervisor@maihue.cl', 'supervisor'),
-(org_id, 'Agente Ventas', 'agente@maihue.cl', 'agent');
-
--- Crear áreas
-INSERT INTO areas (organization_id, name) VALUES 
-(org_id, 'Leads Hogar'),
-(org_id, 'SAC'),
-(org_id, 'Retencion'),
-(org_id, 'Empresas y Horeca');
-```
+- [ ] Schema ejecutado sin errores en Supabase
+- [ ] RLS ejecutado y verificado (usuario sin sesión no puede leer datos)
+- [ ] Seed ejecutado — admin existe en `public.users`
+- [ ] `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` seteadas en Cloudflare Pages
+- [ ] Nuevo deploy forzado después de setear variables
+- [ ] Login funciona con `prueba1@maihue.cl`
+- [ ] Vista de Embudos carga con funnel y etapas del seed
+- [ ] Si no hay sesión → muestra LoginPage (no pantalla blanca)
+- [ ] Si usuario autenticado no tiene fila en `public.users` → muestra pantalla "Sin perfil operacional"

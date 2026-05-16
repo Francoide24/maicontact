@@ -9,23 +9,15 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+
+      // ── organizations ───────────────────────────────────────────────────────
       organizations: {
-        Row: {
-          id: string
-          name: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          created_at?: string
-        }
+        Row:    { id: string; name: string; created_at: string }
+        Insert: { id?: string; name: string; created_at?: string }
+        Update: { id?: string; name?: string; created_at?: string }
       }
+
+      // ── users ───────────────────────────────────────────────────────────────
       users: {
         Row: {
           id: string
@@ -37,11 +29,11 @@ export interface Database {
           created_at: string
         }
         Insert: {
-          id?: string
+          id: string          // must match auth.users.id
           organization_id: string
           name: string
           email: string
-          role: 'admin' | 'supervisor' | 'agent'
+          role?: 'admin' | 'supervisor' | 'agent'
           is_active?: boolean
           created_at?: string
         }
@@ -55,57 +47,157 @@ export interface Database {
           created_at?: string
         }
       }
-      areas: {
+
+      // ── funnels ─────────────────────────────────────────────────────────────
+      funnels: {
         Row: {
           id: string
           organization_id: string
           name: string
-          is_active: boolean
           created_at: string
         }
         Insert: {
           id?: string
           organization_id: string
           name: string
-          is_active?: boolean
           created_at?: string
         }
         Update: {
           id?: string
           organization_id?: string
           name?: string
-          is_active?: boolean
           created_at?: string
         }
       }
-      user_area_memberships: {
+
+      // ── pools ───────────────────────────────────────────────────────────────
+      pools: {
         Row: {
-          user_id: string
-          area_id: string
-          can_receive_assignments: boolean
-          daily_capacity: number
+          id: string
+          organization_id: string
+          name: string
+          strategy: 'round_robin' | 'least_loaded' | 'manual'
+          max_open_per_user: number
+          created_at: string
         }
         Insert: {
-          user_id: string
-          area_id: string
-          can_receive_assignments?: boolean
-          daily_capacity?: number
+          id?: string
+          organization_id: string
+          name: string
+          strategy?: 'round_robin' | 'least_loaded' | 'manual'
+          max_open_per_user?: number
+          created_at?: string
         }
         Update: {
-          user_id?: string
-          area_id?: string
-          can_receive_assignments?: boolean
-          daily_capacity?: number
+          id?: string
+          organization_id?: string
+          name?: string
+          strategy?: 'round_robin' | 'least_loaded' | 'manual'
+          max_open_per_user?: number
+          created_at?: string
         }
       }
+
+      // ── pool_users ──────────────────────────────────────────────────────────
+      pool_users: {
+        Row:    { pool_id: string; user_id: string }
+        Insert: { pool_id: string; user_id: string }
+        Update: { pool_id?: string; user_id?: string }
+      }
+
+      // ── campaigns ───────────────────────────────────────────────────────────
+      campaigns: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          funnel_id: string | null
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          funnel_id?: string | null
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          funnel_id?: string | null
+          active?: boolean
+          created_at?: string
+        }
+      }
+
+      // ── campaign_pools ──────────────────────────────────────────────────────
+      campaign_pools: {
+        Row:    { campaign_id: string; pool_id: string }
+        Insert: { campaign_id: string; pool_id: string }
+        Update: { campaign_id?: string; pool_id?: string }
+      }
+
+      // ── stages ──────────────────────────────────────────────────────────────
+      stages: {
+        Row: {
+          id: string
+          funnel_id: string
+          name: string
+          color: string
+          position: number
+          campaign_id: string | null
+          pool_id: string | null
+          fixed_user_id: string | null
+          assignment_strategy: 'round_robin' | 'fixed' | 'none'
+          n8n_webhook_url: string | null
+          auto_labels: string[]
+          on_enter_automation: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          funnel_id: string
+          name: string
+          color?: string
+          position?: number
+          campaign_id?: string | null
+          pool_id?: string | null
+          fixed_user_id?: string | null
+          assignment_strategy?: 'round_robin' | 'fixed' | 'none'
+          n8n_webhook_url?: string | null
+          auto_labels?: string[]
+          on_enter_automation?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          funnel_id?: string
+          name?: string
+          color?: string
+          position?: number
+          campaign_id?: string | null
+          pool_id?: string | null
+          fixed_user_id?: string | null
+          assignment_strategy?: 'round_robin' | 'fixed' | 'none'
+          n8n_webhook_url?: string | null
+          auto_labels?: string[]
+          on_enter_automation?: string | null
+          created_at?: string
+        }
+      }
+
+      // ── contacts ────────────────────────────────────────────────────────────
       contacts: {
         Row: {
           id: string
           organization_id: string
           display_name: string | null
           phone: string | null
-          rut: string | null
           email: string | null
+          rut: string | null
           created_at: string
         }
         Insert: {
@@ -113,8 +205,8 @@ export interface Database {
           organization_id: string
           display_name?: string | null
           phone?: string | null
-          rut?: string | null
           email?: string | null
+          rut?: string | null
           created_at?: string
         }
         Update: {
@@ -122,23 +214,27 @@ export interface Database {
           organization_id?: string
           display_name?: string | null
           phone?: string | null
-          rut?: string | null
           email?: string | null
+          rut?: string | null
           created_at?: string
         }
       }
+
+      // ── conversations ────────────────────────────────────────────────────────
       conversations: {
         Row: {
           id: string
           organization_id: string
           contact_id: string
+          funnel_id: string | null
+          stage_id: string | null
+          campaign_id: string | null
           channel: string
           external_thread_id: string | null
-          current_area_id: string | null
           current_assignee_id: string | null
           status: 'new' | 'open' | 'waiting' | 'closed'
-          bot_status: string
-          priority: string
+          priority: 'alta' | 'media' | 'baja'
+          labels: string[]
           sla_due_at: string | null
           created_at: string
           updated_at: string
@@ -147,13 +243,15 @@ export interface Database {
           id?: string
           organization_id: string
           contact_id: string
-          channel: string
+          funnel_id?: string | null
+          stage_id?: string | null
+          campaign_id?: string | null
+          channel?: string
           external_thread_id?: string | null
-          current_area_id?: string | null
           current_assignee_id?: string | null
-          status: 'new' | 'open' | 'waiting' | 'closed'
-          bot_status?: string
-          priority?: string
+          status?: 'new' | 'open' | 'waiting' | 'closed'
+          priority?: 'alta' | 'media' | 'baja'
+          labels?: string[]
           sla_due_at?: string | null
           created_at?: string
           updated_at?: string
@@ -162,18 +260,22 @@ export interface Database {
           id?: string
           organization_id?: string
           contact_id?: string
+          funnel_id?: string | null
+          stage_id?: string | null
+          campaign_id?: string | null
           channel?: string
           external_thread_id?: string | null
-          current_area_id?: string | null
           current_assignee_id?: string | null
           status?: 'new' | 'open' | 'waiting' | 'closed'
-          bot_status?: string
-          priority?: string
+          priority?: 'alta' | 'media' | 'baja'
+          labels?: string[]
           sla_due_at?: string | null
           created_at?: string
           updated_at?: string
         }
       }
+
+      // ── messages ────────────────────────────────────────────────────────────
       messages: {
         Row: {
           id: string
@@ -212,102 +314,8 @@ export interface Database {
           created_at?: string
         }
       }
-      transfers: {
-        Row: {
-          id: string
-          conversation_id: string
-          from_area_id: string | null
-          to_area_id: string | null
-          from_user_id: string | null
-          to_user_id: string | null
-          reason: string
-          ai_summary: string | null
-          created_by: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          conversation_id: string
-          from_area_id?: string | null
-          to_area_id?: string | null
-          from_user_id?: string | null
-          to_user_id?: string | null
-          reason: string
-          ai_summary?: string | null
-          created_by: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          conversation_id?: string
-          from_area_id?: string | null
-          to_area_id?: string | null
-          from_user_id?: string | null
-          to_user_id?: string | null
-          reason?: string
-          ai_summary?: string | null
-          created_by?: string
-          created_at?: string
-        }
-      }
-      tags: {
-        Row: {
-          id: string
-          organization_id: string
-          area_id: string | null
-          name: string
-          category: string | null
-          color: string | null
-          is_global: boolean
-          is_active: boolean
-          created_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          area_id?: string | null
-          name: string
-          category?: string | null
-          color?: string | null
-          is_global?: boolean
-          is_active?: boolean
-          created_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          area_id?: string | null
-          name?: string
-          category?: string | null
-          color?: string | null
-          is_global?: boolean
-          is_active?: boolean
-          created_by?: string | null
-          created_at?: string
-        }
-      }
-      conversation_tags: {
-        Row: {
-          conversation_id: string
-          tag_id: string
-          added_by: string | null
-          added_at: string
-        }
-        Insert: {
-          conversation_id: string
-          tag_id: string
-          added_by?: string | null
-          added_at?: string
-        }
-        Update: {
-          conversation_id?: string
-          tag_id?: string
-          added_by?: string | null
-          added_at?: string
-        }
-      }
+
+      // ── audit_logs ──────────────────────────────────────────────────────────
       audit_logs: {
         Row: {
           id: string
@@ -337,6 +345,8 @@ export interface Database {
           created_at?: string
         }
       }
+
+      // ── integrations ────────────────────────────────────────────────────────
       integrations: {
         Row: {
           id: string
@@ -366,15 +376,60 @@ export interface Database {
           updated_at?: string
         }
       }
+
+      // ── tags ────────────────────────────────────────────────────────────────
+      tags: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          color: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          color?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          color?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+      }
+
+      // ── conversation_tags ───────────────────────────────────────────────────
+      conversation_tags: {
+        Row: {
+          conversation_id: string
+          tag_id: string
+          added_by: string | null
+          added_at: string
+        }
+        Insert: {
+          conversation_id: string
+          tag_id: string
+          added_by?: string | null
+          added_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          tag_id?: string
+          added_by?: string | null
+          added_at?: string
+        }
+      }
+
     }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
+    Views:     { [_ in never]: never }
+    Functions: { [_ in never]: never }
+    Enums:     { [_ in never]: never }
   }
 }
