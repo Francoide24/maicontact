@@ -11,9 +11,6 @@ compatibility_flags = ["nodejs_compat"]
 
 pages_build_output_dir = "dist"
 
-[build]
-command = "npm run build"
-
 # ── Variables de entorno ────────────────────────────────────────────────────
 # Las variables VITE_* se configuran en:
 #   Cloudflare Pages → Settings → Environment Variables → Production
