@@ -48,6 +48,8 @@ export interface Campaign {
   funnelId: string | null;
   stageIds: string[];
   poolIds: string[];
+  userIds: string[];        // ejecutivos directamente asignados
+  channels: string[];       // ej: ['whatsapp:+56912345678', 'instagram:maihue_cl']
   active: boolean;
 }
 
@@ -68,6 +70,7 @@ export interface Conversation {
   labels: string[];
   priority: 'alta' | 'media' | 'baja';
   status: 'open' | 'closed';
+  closeReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -207,6 +210,8 @@ export const INITIAL_STATE: MockDataState = {
       funnelId: 'f_hogar',
       stageIds: ['s_contactado', 's_calificado'],
       poolIds: ['pool_growth'],
+      userIds: ['u_carla', 'u_paula'],
+      channels: ['whatsapp:+56900000000'],
       active: true,
     },
   },
@@ -217,10 +222,10 @@ export const INITIAL_STATE: MockDataState = {
     ct_4: { id: 'ct_4', name: 'Café Alameda',     phone: '+56955667788', channel: 'instagram' },
   },
   conversations: {
-    cv_1: { id: 'cv_1', contactId: 'ct_1', stageId: 's_contactado', funnelId: 'f_hogar', assigneeId: 'u_carla', campaignId: 'c_bienvenida', labels: ['interesado'], priority: 'alta', status: 'open', createdAt: '2025-05-14T10:00:00Z', updatedAt: '2025-05-14T11:30:00Z' },
-    cv_2: { id: 'cv_2', contactId: 'ct_2', stageId: 's_nuevo',      funnelId: 'f_hogar', assigneeId: null,      campaignId: null,           labels: [],             priority: 'media', status: 'open', createdAt: '2025-05-15T09:00:00Z', updatedAt: '2025-05-15T09:00:00Z' },
-    cv_3: { id: 'cv_3', contactId: 'ct_3', stageId: 's_calificado', funnelId: 'f_hogar', assigneeId: 'u_paula', campaignId: null,           labels: ['calificado'], priority: 'alta', status: 'open', createdAt: '2025-05-13T14:00:00Z', updatedAt: '2025-05-14T16:00:00Z' },
-    cv_4: { id: 'cv_4', contactId: 'ct_4', stageId: 's_nuevo',      funnelId: 'f_hogar', assigneeId: null,      campaignId: null,           labels: [],             priority: 'baja', status: 'open', createdAt: '2025-05-15T08:00:00Z', updatedAt: '2025-05-15T08:00:00Z' },
+    cv_1: { id: 'cv_1', contactId: 'ct_1', stageId: 's_contactado', funnelId: 'f_hogar', assigneeId: 'u_carla', campaignId: 'c_bienvenida', labels: ['interesado'], priority: 'alta',  status: 'open', closeReason: null, createdAt: '2025-05-14T10:00:00Z', updatedAt: '2025-05-14T11:30:00Z' },
+    cv_2: { id: 'cv_2', contactId: 'ct_2', stageId: 's_nuevo',      funnelId: 'f_hogar', assigneeId: null,      campaignId: null,           labels: [],             priority: 'media', status: 'open', closeReason: null, createdAt: '2025-05-15T09:00:00Z', updatedAt: '2025-05-15T09:00:00Z' },
+    cv_3: { id: 'cv_3', contactId: 'ct_3', stageId: 's_calificado', funnelId: 'f_hogar', assigneeId: 'u_paula', campaignId: null,           labels: ['calificado'], priority: 'alta',  status: 'open', closeReason: null, createdAt: '2025-05-13T14:00:00Z', updatedAt: '2025-05-14T16:00:00Z' },
+    cv_4: { id: 'cv_4', contactId: 'ct_4', stageId: 's_nuevo',      funnelId: 'f_hogar', assigneeId: null,      campaignId: null,           labels: [],             priority: 'baja',  status: 'open', closeReason: null, createdAt: '2025-05-15T08:00:00Z', updatedAt: '2025-05-15T08:00:00Z' },
   },
   messages: {
     cv_1: [

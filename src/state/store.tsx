@@ -33,6 +33,8 @@ type Action =
   | { type: 'CREATE_USER'; user: Omit<AppUser, 'id'>; dbId?: string }
   | { type: 'UPDATE_USER'; userId: string; changes: Partial<AppUser> }
   | { type: 'TOGGLE_USER_STATUS'; userId: string }
+  // Conversations
+  | { type: 'CLOSE_CONVERSATION'; conversationId: string; closeReason: string }
   // Campaigns
   | { type: 'CREATE_CAMPAIGN'; campaign: Omit<Campaign, 'id'>; dbId?: string }
   | { type: 'UPDATE_CAMPAIGN'; campaignId: string; changes: Partial<Campaign> }
@@ -83,6 +85,27 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'SELECT_CONVERSATION':
       return { ...state, selectedConversationId: action.conversationId };
+
+    case 'CLOSE_CONVERSATION': {
+      const conv = state.conversations[action.conversationId];
+      if (!conv) return state;
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          [action.conversationId]: {
+            ...conv,
+            status: 'closed' as const,
+            closeReason: action.closeReason,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+        selectedConversationId:
+          state.selectedConversationId === action.conversationId
+            ? null
+            : state.selectedConversationId,
+      };
+    }
 
     case 'MOVE_CONVERSATION': {
       const domain = extractDomainState(state);

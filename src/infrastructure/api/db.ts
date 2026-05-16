@@ -128,6 +128,8 @@ export async function loadOrgData(orgId: string): Promise<OrgData | null> {
         active: c.active ?? true,
         stageIds: stagesByCampaign[c.id] ?? [],
         poolIds: poolsByCampaign[c.id] ?? [],
+        userIds: c.user_ids ?? [],
+        channels: c.channels ?? [],
       };
     }
 
@@ -178,6 +180,7 @@ export async function loadOrgData(orgId: string): Promise<OrgData | null> {
         labels: c.labels ?? [],
         priority: (c.priority as Conversation['priority']) ?? 'media',
         status: (c.status === 'closed' ? 'closed' : 'open') as Conversation['status'],
+        closeReason: c.close_reason ?? null,
         createdAt: c.created_at,
         updatedAt: c.updated_at,
       };
@@ -223,6 +226,18 @@ export async function dbCreateStage(funnelId: string, name: string, position: nu
 }
 
 // ─── CONVERSATIONS ───────────────────────────────────────────────────────────
+
+export async function dbCloseConversation(convId: string, closeReason: string): Promise<void> {
+  try {
+    const { error } = await sb()
+      .from('conversations')
+      .update({ status: 'closed', close_reason: closeReason, updated_at: new Date().toISOString() })
+      .eq('id', convId);
+    if (error) throw error;
+  } catch (err) {
+    console.error('[db] closeConversation:', err);
+  }
+}
 
 export async function dbMoveConversation(convId: string, stageId: string): Promise<void> {
   try {
@@ -303,7 +318,7 @@ export async function dbCreateCampaign(orgId: string, name: string, funnelId: st
   }
 }
 
-export async function dbUpdateCampaign(id: string, changes: { name?: string; active?: boolean; funnel_id?: string | null }): Promise<void> {
+export async function dbUpdateCampaign(id: string, changes: { name?: string; active?: boolean; funnel_id?: string | null; channels?: string[]; user_ids?: string[] }): Promise<void> {
   try {
     const { error } = await sb().from('campaigns').update(changes).eq('id', id);
     if (error) throw error;

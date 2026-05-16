@@ -135,7 +135,15 @@ export const TeamPage: React.FC = () => {
                   </span>
                 </td>
                 <td className="text-muted small">
-                  {user.campaignIds.map((cid) => campaigns.find((c) => c.id === cid)?.name ?? cid).join(', ') || '—'}
+                  {[
+                    // campaigns via direct assignment
+                    ...user.campaignIds.map((cid) => campaigns.find((c) => c.id === cid)?.name).filter(Boolean),
+                    // campaigns via pools
+                    ...user.poolIds.flatMap((pid) => {
+                      const pool = pools.find((p) => p.id === pid);
+                      return pool ? pool.campaignIds.map((cid) => campaigns.find((c) => c.id === cid)?.name).filter(Boolean) : [];
+                    }),
+                  ].filter((v, i, arr) => arr.indexOf(v) === i).join(', ') || '—'}
                 </td>
                 <td className="text-muted small">
                   {user.poolIds.map((pid) => pools.find((p) => p.id === pid)?.name ?? pid).join(', ') || '—'}

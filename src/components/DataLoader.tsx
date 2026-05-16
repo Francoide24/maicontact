@@ -16,6 +16,7 @@ import {
   dbMoveConversation,
   dbSendMessage,
   dbLoadMessages,
+  dbCloseConversation,
   dbCreateCampaign,
   dbUpdateCampaign,
   dbCreatePool,
@@ -51,6 +52,7 @@ interface DbActions {
   updatePool: (id: string, changes: Partial<Pool>) => Promise<void>;
   addUserToPool: (poolId: string, userId: string) => Promise<void>;
   removeUserFromPool: (poolId: string, userId: string) => Promise<void>;
+  closeConversation: (convId: string, closeReason: string) => Promise<void>;
   // Real user operations via Pages Function
   createUser: (input: CreateUserInput) => Promise<void>;
   updateUser: (userId: string, changes: { name?: string; role?: 'admin' | 'supervisor' | 'agent'; is_active?: boolean }) => Promise<void>;
@@ -126,6 +128,11 @@ export const DataLoader: React.FC<{ children: React.ReactNode }> = ({ children }
       await dbSendMessage(convId, text, isInternal, userId);
     },
 
+    async closeConversation(convId, closeReason) {
+      dispatch({ type: 'CLOSE_CONVERSATION', conversationId: convId, closeReason });
+      await dbCloseConversation(convId, closeReason);
+    },
+
     async loadMessagesForConversation(convId) {
       if (state.messages[convId]?.length) return; // already loaded
       const messages = await dbLoadMessages(convId);
@@ -147,6 +154,8 @@ export const DataLoader: React.FC<{ children: React.ReactNode }> = ({ children }
         name: changes.name,
         active: changes.active,
         funnel_id: changes.funnelId,
+        channels: changes.channels,
+        user_ids: changes.userIds,
       });
     },
 

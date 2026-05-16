@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ConvEvent } from '../data/mockData';
 import { useStore } from '../state/store';
+import { useDbActions } from './DataLoader';
+
+const CLOSE_REASONS = ['Resuelto', 'Sin respuesta', 'Vendido', 'No calificado', 'Duplicado', 'Otro'];
 
 function formatEventText(event: ConvEvent, state: ReturnType<typeof useStore>['state']): string {
   switch (event.type) {
@@ -33,8 +36,60 @@ function formatDateTime(iso: string): string {
   });
 }
 
+function CloseModal({ convId, onClose }: { convId: string; onClose: () => void }) {
+  const { closeConversation } = useDbActions();
+  const [selected, setSelected] = useState('Resuelto');
+  const [custom, setCustom] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleConfirm = async () => {
+    const reason = selected === 'Otro' ? (custom.trim() || 'Otro') : selected;
+    setSaving(true);
+    await closeConversation(convId, reason);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360 }}>
+        <h3 className="modal-title">Cerrar conversación</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {CLOSE_REASONS.map((r) => (
+            <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input
+                type="radio"
+                name="closeReason"
+                value={r}
+                checked={selected === r}
+                onChange={() => setSelected(r)}
+              />
+              {r}
+            </label>
+          ))}
+          {selected === 'Otro' && (
+            <input
+              style={{ width: '100%', padding: '6px 10px', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', background: 'var(--color-surface-2)', color: 'var(--color-text)', fontSize: 13 }}
+              placeholder="Describe el motivo..."
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              autoFocus
+            />
+          )}
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button className="btn btn-danger" onClick={handleConfirm} disabled={saving}>
+            {saving ? 'Cerrando...' : 'Cerrar conversación'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const TicketDetailPanel: React.FC = () => {
   const { state, dispatch } = useStore();
+  const [showCloseModal, setShowCloseModal] = useState(false);
   const convId = state.selectedConversationId;
   const conv = convId ? state.conversations[convId] : null;
 
@@ -71,6 +126,10 @@ export const TicketDetailPanel: React.FC = () => {
 
   return (
     <div className="ticket-detail-panel">
+      {showCloseModal && (
+        <CloseModal convId={conv.id} onClose={() => setShowCloseModal(false)} />
+      )}
+
       {/* Etapa */}
       <div className="ticket-detail-section">
         <div className="ticket-detail-section-title">Etapa</div>
@@ -78,6 +137,7 @@ export const TicketDetailPanel: React.FC = () => {
           className="ticket-detail-select"
           value={conv.stageId}
           onChange={handleStageChange}
+          disabled={conv.status === 'closed'}
         >
           {stagesInFunnel.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
@@ -108,6 +168,12 @@ export const TicketDetailPanel: React.FC = () => {
           <span className="ticket-detail-label">Estado</span>
           <span className="ticket-detail-value">{conv.status === 'open' ? 'Abierto' : 'Cerrado'}</span>
         </div>
+        {conv.status === 'closed' && conv.closeReason && (
+          <div className="ticket-detail-row">
+            <span className="ticket-detail-label">Motivo cierre</span>
+            <span className="ticket-detail-value">{conv.closeReason}</span>
+          </div>
+        )}
       </div>
 
       {/* Etiquetas */}
@@ -164,6 +230,19 @@ export const TicketDetailPanel: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Cerrar */}
+      {conv.status === 'open' && (
+        <div className="ticket-detail-section" style={{ marginTop: 'auto', paddingTop: 8 }}>
+          <button
+            className="btn btn-danger"
+            style={{ width: '100%' }}
+            onClick={() => setShowCloseModal(true)}
+          >
+            Cerrar conversación
+          </button>
+        </div>
+      )}
     </div>
   );
 };
