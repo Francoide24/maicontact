@@ -2,41 +2,20 @@ import React from 'react';
 import { useAuth } from '../../../application/contexts/AuthContext';
 import { LoginPage } from '../../pages/LoginPage';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  allowedRoles?: Array<'admin' | 'supervisor' | 'agent'>;
-}
-
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  allowedRoles 
-}) => {
-  const { userProfile, loading } = useAuth();
+export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
-      <main className="shell" style={{ justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <div className="card" style={{ padding: '2rem' }}>
-          <p>Cargando...</p>
+      <div className="login-page">
+        <div className="login-card" style={{ textAlign: 'center' }}>
+          <p style={{ color: 'var(--color-text-muted)' }}>Cargando…</p>
         </div>
-      </main>
+      </div>
     );
   }
 
-  if (!userProfile) {
-    return <LoginPage />;
-  }
-
-  if (allowedRoles && !allowedRoles.includes(userProfile.role)) {
-    return (
-      <main className="shell" style={{ justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-          <h2>Acceso Denegado</h2>
-          <p>No tienes permisos para ver esta página.</p>
-        </div>
-      </main>
-    );
-  }
+  if (!isAuthenticated) return <LoginPage />;
 
   return <>{children}</>;
 };

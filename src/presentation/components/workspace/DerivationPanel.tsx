@@ -4,7 +4,7 @@ import { useApp } from '../../../application/contexts/AppContext';
 import { useAuth } from '../../../application/contexts/AuthContext';
 
 export const DerivationPanel: React.FC = () => {
-  const { userProfile } = useAuth();
+  const { currentUser: userProfile } = useAuth();
   const { 
     selectedConversation, 
     areas, 

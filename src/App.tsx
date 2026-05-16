@@ -6,21 +6,30 @@ import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { FunnelBoard } from './components/FunnelBoard';
 import { ChatLayout } from './components/ChatLayout';
+import { TeamPage } from './presentation/pages/TeamPage';
+import { CampaignsPage } from './presentation/pages/CampaignsPage';
 
 function AppShell() {
   const { state } = useStore();
+
+  const renderView = () => {
+    switch (state.activeView) {
+      case 'funnel':    return <FunnelBoard />;
+      case 'chat':      return <ChatLayout />;
+      case 'team':      return <TeamPage />;
+      case 'campaigns': return <CampaignsPage />;
+      case 'channels':  return <div className="stub-view">Canales</div>;
+      case 'templates': return <div className="stub-view">Plantillas Meta</div>;
+      case 'settings':  return <div className="stub-view">Configuración</div>;
+      default:          return null;
+    }
+  };
 
   return (
     <div className="app-shell">
       <Topbar />
       <Sidebar />
-      <main className="app-main">
-        {state.activeView === 'funnel' && <FunnelBoard />}
-        {state.activeView === 'chat' && <ChatLayout />}
-        {state.activeView === 'channels' && <div className="stub-view">Canales</div>}
-        {state.activeView === 'team' && <div className="stub-view">Equipo</div>}
-        {state.activeView === 'settings' && <div className="stub-view">Configuración</div>}
-      </main>
+      <main className="app-main">{renderView()}</main>
     </div>
   );
 }

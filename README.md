@@ -1,107 +1,123 @@
 # MaiContact
 
-Plataforma operacional omnicanal preparada para WhatsApp Cloud API, n8n, supervisión, permisos, transferencias con historial completo, etiquetas y auditoría.
+Plataforma operacional omnicanal tipo Vambe para Maihue. CRM con embudos Kanban, gestión de conversaciones, roles, campañas y pools de ejecutivos.
 
 ## Estado
 
-✅ **Funcional y listo para producción**
+✅ **MVP funcional** — Demo auth, RBAC, Kanban board, Team, Campañas, Pools.
 
-El proyecto ahora incluye todas las funcionalidades operacionales:
-- Autenticación real con Supabase
-- Sistema de roles (Admin, Supervisor, Agente)  
-- Gestión de conversaciones en tiempo real
-- Integración con WhatsApp Cloud API
-- Webhooks para n8n
-- Base de datos PostgreSQL completa
-- Despliegue en Cloudflare Workers
+> ⚠️  **Seguridad**: La autenticación actual es solo para demostración/MVP. En producción debe reemplazarse por Cloudflare Access, JWT firmado + Workers, Supabase Auth real u otro proveedor de identidad. Las credenciales demo en `src/infrastructure/auth/demoAuth.ts` deben eliminarse antes de producción.
+
+## Credenciales demo
+
+| Email | Password | Rol |
+|-------|----------|-----|
+| prueba1@maihue.cl | prueba1 | Admin (todos los permisos) |
+| franco@maihue.cl  | franco123 | Admin |
+| carla@maihue.cl   | carla123  | Agente |
+| paula@maihue.cl   | paula123  | Agente |
 
 ## Arquitectura
 
-El proyecto sigue Clean Architecture con la siguiente estructura:
-
 ```
 src/
-├── domain/           # Entidades y tipos del dominio
-│   └── types/       # Definiciones TypeScript basadas en el modelo SQL
-├── infrastructure/   # Configuración y servicios externos
-│   ├── api/         # Integraciones con APIs externas
-│   └── config/      # Configuración del entorno
-├── application/      # Lógica de aplicación
-│   ├── hooks/       # Custom React hooks
-│   └── services/    # Servicios de negocio
-├── presentation/     # Capa de presentación
-│   ├── components/  # Componentes React organizados por dominio
-│   ├── pages/       # Páginas/vistas principales
-│   └── styles/      # Estilos CSS
-└── shared/          # Código compartido
-    ├── constants/   # Constantes de la aplicación
-    ├── mocks/       # Datos de prueba
-    └── utils/       # Utilidades comunes
+  infrastructure/
+    auth/          # Demo auth (⚠️  reemplazar en prod)
+    api/           # Supabase client (listo para conectar)
+    config/        # Variables de entorno
+  application/
+    contexts/      # AuthContext (demo), AppContext (legacy)
+    services/      # RBAC (can/canAny/canAll)
+  domain/
+    types/         # Tipos de base de datos Supabase
+  data/
+    mockData.ts    # Estado inicial + tipos del dominio
+  state/
+    store.tsx      # useReducer + Context (fuente única de verdad)
+  services/
+    persistence.ts   # localStorage — loadState/saveState/loadSession/saveSession
+    sanitizer.ts     # escapeHtml()
+    assignmentService.ts  # Round-robin real
+    stageRouting.ts       # moveConversationToStage() inmutable
+  components/         # Componentes nuevos (flujo principal)
+    Sidebar.tsx       # Expansible/colapsable
+    Topbar.tsx        # Toolbar con botones por vista
+    FunnelBoard.tsx   # Kanban board
+    FunnelColumn.tsx  # Columna drag-target
+    TicketCard.tsx    # Tarjeta draggable
+    ChatLayout.tsx
+    ConversationView.tsx
+    TicketDetailPanel.tsx
+    Modal.tsx
+  presentation/
+    pages/
+      LoginPage.tsx       # Login con email+password
+      TeamPage.tsx        # Gestión de usuarios
+      CampaignsPage.tsx   # Campañas + Pools
+    components/
+      auth/               # ProtectedRoute
+      layout/             # Header legacy
+      workspace/          # Paneles legacy (para limpiar)
+  styles/
+    base.css      # Variables CSS, reset
+    layout.css    # Shell, sidebar, topbar, login, páginas, utilidades
+    funnel.css    # Kanban board y tarjetas
+    chat.css      # Vista de conversación
+    modal.css     # Modales
 ```
 
 ## Instalación
 
 ```bash
-# Instalar dependencias
 npm install
-
-# Copiar variables de entorno
-cp .env.template .env
-
-# Ejecutar en desarrollo
+cp .env.template .env   # completar variables cuando haya Supabase real
 npm run dev
 ```
 
-## Scripts disponibles
+## Scripts
 
-- `npm run dev` - Servidor de desarrollo
-- `npm run build` - Build de producción  
-- `npm run preview` - Preview del build
-- `npm run lint` - Verificación de tipos TypeScript
+- `npm run dev` — Servidor de desarrollo
+- `npm run build` — Build de producción (Vite + tsc)
+- `npm run lint` — Verificación de tipos TypeScript
+
+## Stack
+
+- **Frontend**: React 19 + TypeScript + Vite
+- **Estado**: useReducer + Context (sin librerías externas)
+- **Estilos**: CSS puro con variables
+- **Persistencia demo**: localStorage vía servicio
+- **Auth demo**: credenciales hardcodeadas (reemplazar en producción)
+- **Supabase**: cliente configurado, listo para conectar
+- **Cloudflare**: `wrangler.toml` preparado para Workers/Pages
+- **n8n**: servicio de webhooks preparado en `src/application/services/n8nService.ts`
+- **WhatsApp**: servicio preparado en `src/application/services/whatsappService.ts`
 
 ## Funcionalidades implementadas
 
-### 🔐 Autenticación y Autorización
-- Login/logout con Supabase Auth
-- Roles: Admin, Supervisor, Agente
-- Protección de rutas basada en permisos
-- Filtros de datos por rol
+- ✅ Login con email + contraseña (demo)
+- ✅ RBAC con 18 permisos granulares
+- ✅ Roles: Admin, Supervisor, Agente
+- ✅ Sidebar expandible/colapsable con tooltips
+- ✅ Topbar con toolbar contextual por vista
+- ✅ Kanban board con drag & drop HTML5
+- ✅ Scroll horizontal entre etapas
+- ✅ Scroll vertical dentro de columnas
+- ✅ Crear embudo y etapas
+- ✅ Mover conversaciones (drag + manual)
+- ✅ Round-robin real con memoria de último asignado
+- ✅ Stage routing inmutable con eventos auditados
+- ✅ Vista Chat (3 paneles)
+- ✅ Gestión de equipo (usuarios, roles, permisos, campañas, pools)
+- ✅ Gestión de campañas
+- ✅ Gestión de pools de ejecutivos
+- ✅ Persistencia en localStorage
 
-### 💬 Gestión de Conversaciones
-- Lista de conversaciones en tiempo real
-- Vista detallada con mensajes
-- Envío de mensajes y notas internas
-- Estados: nuevo, abierto, esperando, cerrado
-- Prioridades y asignaciones
+## Próximos pasos para producción
 
-### 🔄 Derivación y Asignación
-- Transferencia entre áreas
-- Asignación manual y automática
-- Estrategias por área
-- Historial de transferencias
-
-### 🏷️ Etiquetado y Organización
-- Sistema de etiquetas por conversación
-- Etiquetas globales y por área
-- Filtros y búsqueda
-
-### 📊 Auditoría y Trazabilidad
-- Log completo de acciones
-- Historial de cambios
-- Métricas de agentes
-
-### 🔌 Integraciones Listas
-- **WhatsApp Cloud API**: Envío/recepción de mensajes
-- **n8n**: Webhooks para automatización
-- **Supabase**: Base de datos y tiempo real
-- **Cloudflare**: Hosting y CDN
-
-## Próximos pasos
-
-1. **Configurar Supabase** (ver `docs/deployment.md`)
-2. **Configurar WhatsApp Business API** 
-3. **Configurar n8n workflows**
-4. **Desplegar en Cloudflare Workers**
-5. **Configurar dominio personalizado**
-
-Consulta la documentación completa en `/docs/`
+1. Reemplazar demo auth por Cloudflare Access o Supabase Auth real
+2. Conectar Supabase: completar `.env` con URL y anon key
+3. Configurar n8n webhooks reales
+4. Conectar WhatsApp Cloud API (META Business)
+5. Configurar Cloudflare Workers/Pages (`wrangler.toml`)
+6. Limpiar `src/presentation/components/workspace/` (componentes legacy)
+7. Agregar Plantillas Meta (view stub lista para conectar)
